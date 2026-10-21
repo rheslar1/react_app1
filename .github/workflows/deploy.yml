@@ -1,0 +1,92 @@
+# cspell:words buildx
+name: Deploy
+
+'on':
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Set image name
+      run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/react-app" >> "$GITHUB_ENV"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v4
+
+    - name: Configure cluster access
+      env:
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      run: |
+        mkdir -p "$HOME/.kube"
+        echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
+        chmod 600 "$HOME/.kube/config"
+
+    - name: Pin image in manifest
+      run: |
+        sed -i "s|image: .*react-app:.*|image: ${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}|" k8s/deployment.yaml
+        grep -n "image:" k8s/deployment.yaml
+
+    - name: Apply manifests
+      run: |
+        kubectl apply -f k8s/namespace.yaml
+        kubectl apply -f k8s/
+
+    - name: Create Docker Hub pull secret
+      env:
+        DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      run: |
+        kubectl -n react-app create secret docker-registry dockerhub-pull \
+          --docker-server=https://index.docker.io/v1/ \
+          --docker-username="$DH_USER" \
+          --docker-password="$DH_TOKEN" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Wait for rollout
+      id: rollout
+      run: kubectl -n react-app rollout status deployment/react-app --timeout=180s
+
+    - name: Roll back on failed rollout
+      if: failure() && steps.rollout.outcome == 'failure'
+      run: kubectl -n react-app rollout undo deployment/react-app

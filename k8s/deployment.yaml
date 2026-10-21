@@ -18,10 +18,13 @@ spec:
         app: react-app
 
     spec:
+      imagePullSecrets:
+      - name: dockerhub-pull
+
       containers:
       - name: react-app
 
-        image: ghcr.io/rheslar1/react-app:latest
+        image: docker.io/DOCKERHUB_USERNAME/react-app:latest
 
         imagePullPolicy: Always
 
