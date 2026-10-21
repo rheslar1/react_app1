@@ -16,13 +16,126 @@ concurrency:
 env:
   REGISTRY: docker.io
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  # 1. Static scan: lint + dependency audit
+  scan:
+    name: Static scan
     runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
 
-    permissions:
-      contents: read
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: 24
+        cache: npm
 
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Dependency audit
+      run: npm audit --audit-level=high
+
+  # 2. Build: compile the app and keep the output for later stages
+  build:
+    name: Build
+    needs: scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: 24
+        cache: npm
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Build
+      run: npm run build
+
+    - name: Package build output with SHA-256 checksum
+      run: |
+        tar -czf dist.tar.gz dist
+        sha256sum dist.tar.gz k8s/*.yaml > SHA256SUMS
+        cat SHA256SUMS
+
+    - name: Upload build output
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: |
+          dist.tar.gz
+          SHA256SUMS
+        if-no-files-found: error
+
+  # 3. Test: unit tests (if defined) and a container smoke test
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: 24
+        cache: npm
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Download build output
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+
+    - name: Verify artifact SHA-256
+      run: sha256sum --check --strict SHA256SUMS
+
+    - name: Unit tests
+      run: npm test --if-present
+
+    - name: Build image for smoke test
+      run: docker build -t react-app:test .
+
+    - name: Scan image with Trivy
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: react-app:test
+        severity: CRITICAL
+        exit-code: '1'
+        ignore-unfixed: true
+
+    - name: Smoke test container
+      run: |
+        docker run -d --name smoke -p 8080:80 react-app:test
+        for i in $(seq 1 15); do
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ || true)
+          [ "$code" = "200" ] && echo "Smoke test passed" && exit 0
+          sleep 2
+        done
+        echo "::error::Container did not return HTTP 200 (last status: $code)"
+        docker logs smoke
+        exit 1
+
+  # 4. Verify secrets: fail early with a clear message if any are missing
+  verify-secrets:
+    name: Verify secrets
+    needs: test
+    runs-on: ubuntu-latest
     steps:
     - name: Check required secrets
       env:
@@ -39,8 +152,22 @@ jobs:
         done
         exit $missing
 
+  # 5. Deploy: push the image and roll it out to the cluster
+  deploy:
+    name: Deploy
+    needs: verify-secrets
+    runs-on: ubuntu-latest
+    steps:
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Download build output
+      uses: actions/download-artifact@v4
+      with:
+        name: dist
+
+    - name: Verify artifact SHA-256 (build output and manifests)
+      run: sha256sum --check --strict SHA256SUMS
 
     - name: Set image name
       run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/react-app" >> "$GITHUB_ENV"
