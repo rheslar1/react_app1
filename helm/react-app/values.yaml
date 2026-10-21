@@ -1,7 +1,7 @@
 replicaCount: 3
 
 image:
-  repository: docker.io/DOCKERHUB_USERNAME/react-app
+  repository: docker.io/rheslar15/react-app
   tag: latest
 
 service:

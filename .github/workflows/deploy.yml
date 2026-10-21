@@ -24,6 +24,21 @@ jobs:
       contents: read
 
     steps:
+    - name: Check required secrets
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+      run: |
+        missing=0
+        for name in DOCKERHUB_USERNAME DOCKERHUB_TOKEN KUBE_CONFIG; do
+          if [ -z "${!name}" ]; then
+            echo "::error::Secret $name is not set (Settings > Secrets and variables > Actions)"
+            missing=1
+          fi
+        done
+        exit $missing
+
     - name: Checkout
       uses: actions/checkout@v5
 

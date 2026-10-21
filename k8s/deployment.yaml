@@ -24,7 +24,7 @@ spec:
       containers:
       - name: react-app
 
-        image: docker.io/DOCKERHUB_USERNAME/react-app:latest
+        image: docker.io/rheslar15/react-app:latest
 
         imagePullPolicy: Always
 
