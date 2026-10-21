@@ -1,6 +1,6 @@
 name: React CI
 
-on:
+'on':
   push:
     branches:
       - main
