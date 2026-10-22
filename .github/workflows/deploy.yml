@@ -301,6 +301,8 @@ jobs:
         DIGEST: ${{ steps.push.outputs.digest }}
       run: |
         case "$DIGEST" in sha256:*) ;; *) echo "::error::Missing image digest"; exit 1;; esac
+        git fetch origin "${GITHUB_REF_NAME}:refs/remotes/origin/${GITHUB_REF_NAME}"
+        git checkout -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
         sed -i "s|^\(  repository:\).*|\1 ${REGISTRY}/${IMAGE_NAME}|" helm/react-app/values.yaml
         sed -i "s|^\(  digest:\).*|\1 \"${DIGEST}\"|" helm/react-app/values.yaml
         sed -i "s|^\(  tag:\).*|\1 ${GITHUB_SHA}|" helm/react-app/values.yaml
@@ -317,7 +319,6 @@ jobs:
           echo "Values already up to date"; exit 0
         fi
         git commit -m "chore(deploy): ${GITHUB_SHA::7} ${DIGEST::19} [skip ci]"
-        git pull --rebase origin "${GITHUB_REF_NAME}"
         git push origin "HEAD:${GITHUB_REF_NAME}"
 
     - name: Verify committed digest
