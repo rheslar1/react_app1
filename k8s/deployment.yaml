@@ -18,6 +18,13 @@ spec:
         app: react-app
 
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+
       imagePullSecrets:
       - name: dockerhub-pull
 
@@ -29,7 +36,18 @@ spec:
         imagePullPolicy: Always
 
         ports:
-          - containerPort: 80
+          - containerPort: 8080
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
 
         resources:
           requests:
@@ -39,3 +57,7 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
+
+      volumes:
+      - name: tmp
+        emptyDir: {}
