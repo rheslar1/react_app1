@@ -45,6 +45,15 @@ jobs:
     - name: Dependency audit
       run: npm audit --audit-level=high
 
+    - name: Lint Dockerfile (hadolint)
+      run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+
+    - name: Lint Helm chart (strict)
+      run: docker run --rm -v "$PWD/helm:/charts" alpine/helm:3.17.0 lint --strict /charts/react-app
+
+    - name: Render Helm chart
+      run: docker run --rm -v "$PWD/helm:/charts" alpine/helm:3.17.0 template react-app /charts/react-app --namespace react-app > /dev/null
+
   # 1b. Static analysis: CodeQL, the JavaScript/TypeScript equivalent of cppcheck
   codeql:
     name: CodeQL analysis
@@ -144,8 +153,15 @@ jobs:
     - name: Verify artifact SHA-256
       run: sha256sum --check --strict SHA256SUMS
 
-    - name: Unit tests
-      run: npm test --if-present
+    - name: Unit tests with coverage
+      run: npm run test:coverage
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v7
+      with:
+        name: coverage
+        path: coverage
+        if-no-files-found: warn
 
     - name: Build image for smoke test
       run: docker build -t react-app:test .
@@ -230,6 +246,8 @@ jobs:
       with:
         context: .
         push: true
+        sbom: true
+        provenance: mode=max
         tags: |
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

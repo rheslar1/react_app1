@@ -13,14 +13,14 @@ RUN npm run build
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 # Pick up OS security fixes (e.g. OpenSSL) missing from the base image
-USER root
+USER 0
 RUN apk upgrade --no-cache
 
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-USER nginx
+USER 101
 
 EXPOSE 8080
 
