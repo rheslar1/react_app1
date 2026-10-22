@@ -7,10 +7,11 @@ image:
   tag: 5f7b1af0c1d1354ab03d0b9a22b193065af01775
   pullPolicy: IfNotPresent
 
-# Private Docker Hub repo: create this secret once in the namespace
-# (see README / argocd/application.yaml).
-imagePullSecrets:
-  - name: dockerhub-pull
+# The Docker Hub repo is public, so no pull secret is needed. If you make it
+# private, create the secret once in the namespace and list it here, e.g.
+#   imagePullSecrets:
+#     - name: dockerhub-pull
+imagePullSecrets: []
 
 service:
   type: ClusterIP
