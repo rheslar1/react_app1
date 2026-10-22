@@ -115,6 +115,7 @@ jobs:
       uses: aquasecurity/trivy-action@v0.33.1
       with:
         image-ref: react-app:test
+        version: v0.75.0
         severity: CRITICAL
         exit-code: '1'
         ignore-unfixed: true
