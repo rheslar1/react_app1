@@ -258,7 +258,9 @@ jobs:
     - name: Install cosign
       uses: sigstore/cosign-installer@v4.1.1
       with:
-        cosign-release: v3.1.3
+        # v2 stores signatures as <digest>.sig tags, which Docker Hub supports
+        # (v3 uses OCI referrers, which Docker Hub does not expose)
+        cosign-release: v2.6.5
 
     - name: Sign image (keyless, by digest)
       env:
