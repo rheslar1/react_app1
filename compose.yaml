@@ -1,0 +1,10 @@
+name: react-app
+
+services:
+  app:
+    image: react-app:local
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

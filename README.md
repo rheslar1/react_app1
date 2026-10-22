@@ -15,6 +15,21 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Run locally with Docker Desktop
+
+With Docker Desktop running, start the app from the repository root:
+
+```sh
+docker compose up --build -d
+```
+
+The `react-app` Compose project and its container will appear in Docker Desktop.
+Open <http://localhost:8080> to view the app. To stop it, run:
+
+```sh
+docker compose down
+```
+
 ## Deployment (Argo CD)
 
 The `Deploy` workflow builds and pushes the image to Docker Hub, then commits
