@@ -10,7 +10,7 @@ COPY . .
 
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 
 # Pick up OS security fixes (e.g. OpenSSL) missing from the base image
 USER 0
