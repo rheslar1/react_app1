@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Setup Node.js
       uses: actions/setup-node@v5
@@ -63,7 +63,7 @@ jobs:
       security-events: write
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Trivy filesystem scan
       uses: aquasecurity/trivy-action@v0.36.0
@@ -98,7 +98,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Setup Node.js
       uses: actions/setup-node@v5
@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Setup Node.js
       uses: actions/setup-node@v5
@@ -218,7 +218,7 @@ jobs:
       id-token: write   # keyless cosign signing (GitHub OIDC)
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v7
 
     - name: Download build output
       uses: actions/download-artifact@v8
