@@ -3,8 +3,8 @@ replicaCount: 3
 image:
   repository: docker.io/rheslar15/react-app
   # CI pins the exact image by digest (sha256:...); tag is the fallback.
-  digest: ""
-  tag: latest
+  digest: "sha256:aa0c154b8262320f99e04a116e7816ef609b71067b0efeaaf272ea172927df93"
+  tag: 5f7b1af0c1d1354ab03d0b9a22b193065af01775
   pullPolicy: IfNotPresent
 
 # Private Docker Hub repo: create this secret once in the namespace
