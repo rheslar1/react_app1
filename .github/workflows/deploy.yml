@@ -6,6 +6,8 @@ name: Deploy
     branches:
       - main
     paths-ignore:
+      - 'helm/**'
+      - 'argocd/**'
       - '**.md'
   workflow_dispatch:
 
@@ -104,7 +106,7 @@ jobs:
     - name: Package build output with SHA-256 checksum
       run: |
         tar -czf dist.tar.gz dist
-        sha256sum dist.tar.gz k8s/*.yaml > SHA256SUMS
+        sha256sum dist.tar.gz $(find helm argocd -type f | sort) > SHA256SUMS
         cat SHA256SUMS
 
     - name: Upload build output
@@ -179,10 +181,9 @@ jobs:
       env:
         DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
       run: |
         missing=0
-        for name in DOCKERHUB_USERNAME DOCKERHUB_TOKEN KUBE_CONFIG; do
+        for name in DOCKERHUB_USERNAME DOCKERHUB_TOKEN; do
           if [ -z "${!name}" ]; then
             echo "::error::Secret $name is not set (Settings > Secrets and variables > Actions)"
             missing=1
@@ -190,11 +191,14 @@ jobs:
         done
         exit $missing
 
-  # 5. Deploy: push the image and roll it out to the cluster
+  # 5. Deploy (GitOps): push the image, record its digest in the Helm values
+  #    and let Argo CD roll it out to the cluster.
   deploy:
     name: Deploy
     needs: verify-secrets
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -204,7 +208,7 @@ jobs:
       with:
         name: dist
 
-    - name: Verify artifact SHA-256 (build output and manifests)
+    - name: Verify artifact SHA-256 (build output and Helm chart)
       run: sha256sum --check --strict SHA256SUMS
 
     - name: Set image name
@@ -232,63 +236,34 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v4
-
-    - name: Configure cluster access
-      env:
-        KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-      run: |
-        mkdir -p "$HOME/.kube"
-        echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
-        chmod 600 "$HOME/.kube/config"
-
-    - name: Pin image in manifest (by digest)
+    - name: Pin image digest in Helm values
       env:
         DIGEST: ${{ steps.push.outputs.digest }}
       run: |
         case "$DIGEST" in sha256:*) ;; *) echo "::error::Missing image digest"; exit 1;; esac
-        sed -i "s|image: .*react-app[:@].*|image: ${REGISTRY}/${IMAGE_NAME}@${DIGEST}|" k8s/deployment.yaml
-        grep -n "image:" k8s/deployment.yaml
+        sed -i "s|^\(  repository:\).*|\1 ${REGISTRY}/${IMAGE_NAME}|" helm/react-app/values.yaml
+        sed -i "s|^\(  digest:\).*|\1 \"${DIGEST}\"|" helm/react-app/values.yaml
+        sed -i "s|^\(  tag:\).*|\1 ${GITHUB_SHA}|" helm/react-app/values.yaml
+        sed -n '/^image:/,/^$/p' helm/react-app/values.yaml
 
-    - name: Apply manifests
-      run: |
-        kubectl apply -f k8s/namespace.yaml
-        kubectl apply -f k8s/
-
-    - name: Create Docker Hub pull secret
-      env:
-        DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-        DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      run: |
-        kubectl -n react-app create secret docker-registry dockerhub-pull \
-          --docker-server=https://index.docker.io/v1/ \
-          --docker-username="$DH_USER" \
-          --docker-password="$DH_TOKEN" \
-          --dry-run=client -o yaml | kubectl apply -f -
-
-    - name: Wait for rollout
-      id: rollout
-      run: kubectl -n react-app rollout status deployment/react-app --timeout=180s
-
-    - name: Verify deployed image digest
-      id: verify
+    - name: Commit values for Argo CD
       env:
         DIGEST: ${{ steps.push.outputs.digest }}
       run: |
-        echo "Expected digest: $DIGEST"
-        spec=$(kubectl -n react-app get deployment react-app -o jsonpath='{.spec.template.spec.containers[0].image}')
-        case "$spec" in *"@$DIGEST") ;; *) echo "::error::Deployment image ($spec) does not match pushed digest"; exit 1;; esac
-        ids=$(kubectl -n react-app get pods -l app=react-app -o json | jq -r '.items[] | select(.metadata.deletionTimestamp == null and .status.phase == "Running") | .status.containerStatuses[0].imageID')
-        [ -n "$ids" ] || { echo "::error::No running pods found"; exit 1; }
-        bad=0
-        while read -r id; do
-          echo "pod imageID: $id"
-          case "$id" in *"$DIGEST") ;; *) bad=1;; esac
-        done <<< "$ids"
-        [ "$bad" = 0 ] || { echo "::error::Running pod image digest differs from pushed digest"; exit 1; }
-        echo "All running pods match $DIGEST"
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add helm/react-app/values.yaml
+        if git diff --cached --quiet; then
+          echo "Values already up to date"; exit 0
+        fi
+        git commit -m "chore(deploy): ${GITHUB_SHA::7} ${DIGEST::19} [skip ci]"
+        git pull --rebase origin "${GITHUB_REF_NAME}"
+        git push origin "HEAD:${GITHUB_REF_NAME}"
 
-    - name: Roll back on failed rollout
-      if: failure() && (steps.rollout.outcome == 'failure' || steps.verify.outcome == 'failure')
-      run: kubectl -n react-app rollout undo deployment/react-app
+    - name: Verify committed digest
+      env:
+        DIGEST: ${{ steps.push.outputs.digest }}
+      run: |
+        git fetch origin "${GITHUB_REF_NAME}"
+        git show "origin/${GITHUB_REF_NAME}:helm/react-app/values.yaml" | grep -F "digest: \"${DIGEST}\""
+        echo "Argo CD will sync ${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
