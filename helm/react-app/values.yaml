@@ -24,7 +24,8 @@ ingress:
   host: react.local
 
 autoscaling:
-  enabled: true
+  # Needs metrics-server in the cluster (not included in Docker Desktop)
+  enabled: false
   minReplicas: 3
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
