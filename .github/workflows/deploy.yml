@@ -1,4 +1,4 @@
-# cspell:words buildx cppcheck misconfig
+# cspell:words buildx cppcheck misconfig tmpfs esac
 name: Deploy
 
 'on':
@@ -221,6 +221,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build and push image
+      id: push
       uses: docker/build-push-action@v6
       with:
         context: .
@@ -242,9 +243,12 @@ jobs:
         echo "$KUBE_CONFIG" | base64 -d > "$HOME/.kube/config"
         chmod 600 "$HOME/.kube/config"
 
-    - name: Pin image in manifest
+    - name: Pin image in manifest (by digest)
+      env:
+        DIGEST: ${{ steps.push.outputs.digest }}
       run: |
-        sed -i "s|image: .*react-app:.*|image: ${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}|" k8s/deployment.yaml
+        case "$DIGEST" in sha256:*) ;; *) echo "::error::Missing image digest"; exit 1;; esac
+        sed -i "s|image: .*react-app[:@].*|image: ${REGISTRY}/${IMAGE_NAME}@${DIGEST}|" k8s/deployment.yaml
         grep -n "image:" k8s/deployment.yaml
 
     - name: Apply manifests
@@ -267,6 +271,24 @@ jobs:
       id: rollout
       run: kubectl -n react-app rollout status deployment/react-app --timeout=180s
 
+    - name: Verify deployed image digest
+      id: verify
+      env:
+        DIGEST: ${{ steps.push.outputs.digest }}
+      run: |
+        echo "Expected digest: $DIGEST"
+        spec=$(kubectl -n react-app get deployment react-app -o jsonpath='{.spec.template.spec.containers[0].image}')
+        case "$spec" in *"@$DIGEST") ;; *) echo "::error::Deployment image ($spec) does not match pushed digest"; exit 1;; esac
+        ids=$(kubectl -n react-app get pods -l app=react-app -o json | jq -r '.items[] | select(.metadata.deletionTimestamp == null and .status.phase == "Running") | .status.containerStatuses[0].imageID')
+        [ -n "$ids" ] || { echo "::error::No running pods found"; exit 1; }
+        bad=0
+        while read -r id; do
+          echo "pod imageID: $id"
+          case "$id" in *"$DIGEST") ;; *) bad=1;; esac
+        done <<< "$ids"
+        [ "$bad" = 0 ] || { echo "::error::Running pod image digest differs from pushed digest"; exit 1; }
+        echo "All running pods match $DIGEST"
+
     - name: Roll back on failed rollout
-      if: failure() && steps.rollout.outcome == 'failure'
+      if: failure() && (steps.rollout.outcome == 'failure' || steps.verify.outcome == 'failure')
       run: kubectl -n react-app rollout undo deployment/react-app
