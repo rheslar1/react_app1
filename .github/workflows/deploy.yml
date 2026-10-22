@@ -1,4 +1,4 @@
-# cspell:words buildx
+# cspell:words buildx cppcheck misconfig
 name: Deploy
 
 'on':
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  # 1. Static scan: lint + dependency audit
+  # 1. Static scan: lint (incl. security rules) + dependency audit
   scan:
     name: Static scan
     runs-on: ubuntu-latest
@@ -37,16 +37,53 @@ jobs:
     - name: Install Dependencies
       run: npm ci
 
-    - name: Lint
+    - name: Lint (ESLint with security rules)
       run: npm run lint
 
     - name: Dependency audit
       run: npm audit --audit-level=high
 
+  # 1b. Static analysis: CodeQL, the JavaScript/TypeScript equivalent of cppcheck
+  codeql:
+    name: CodeQL analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript-typescript
+
+    - name: Analyze
+      uses: github/codeql-action/analyze@v3
+
+  # 1c. Security scan: vulnerabilities, committed secrets and misconfigurations
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Trivy filesystem scan
+      uses: aquasecurity/trivy-action@v0.33.1
+      with:
+        version: v0.75.0
+        scan-type: fs
+        scanners: vuln,secret,misconfig
+        severity: CRITICAL,HIGH
+        ignore-unfixed: true
+        exit-code: '1'
+
   # 2. Build: compile the app and keep the output for later stages
   build:
     name: Build
-    needs: scan
+    needs: [scan, codeql, security-scan]
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
