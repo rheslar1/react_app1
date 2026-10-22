@@ -3,8 +3,8 @@ replicaCount: 3
 image:
   repository: docker.io/rheslar15/react-app
   # CI pins the exact image by digest (sha256:...); tag is the fallback.
-  digest: "sha256:88c2fb417a0b1118412693e36cfff11c9f04b976623bc43e2d6c78fd5d5e24cb"
-  tag: 956cbb059c1d1bd2c156b4d4369dac13aaf88555
+  digest: "sha256:1886dcedc9e08dcdf172b107cb3e6c210b9e9d8823fcc1de12b15aa8fb4b907b"
+  tag: cedb97be08d04eb0101f4687bb35db4bbc3c99cb
   pullPolicy: IfNotPresent
 
 # The Docker Hub repo is public, so no pull secret is needed. If you make it
