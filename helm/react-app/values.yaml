@@ -17,6 +17,63 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 8080
+  # Optional local-cluster browser access. Leave unset for ClusterIP.
+  nodePort: null
+
+api:
+  replicaCount: 1
+  image:
+    repository: docker.io/rheslar15/relay-api
+    digest: ""
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    name: relay-api
+    port: 8081
+  cookieSecure: true
+  environment: production
+  version: ""
+  revision: ""
+  imageDigest: ""
+  database:
+    host: mysql
+    name: relayops
+    user: relay
+    secretName: relayops-db
+    passwordKey: password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 96Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+mysql:
+  enabled: true
+  image:
+    repository: mysql
+    tag: "8.4"
+    pullPolicy: IfNotPresent
+  service:
+    name: mysql
+    port: 3306
+  database: relayops
+  user: relay
+  secretName: relayops-db
+  rootPasswordKey: root-password
+  passwordKey: password
+  persistence:
+    enabled: true
+    storageClassName: ""
+    size: 8Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
 
 ingress:
   # Needs an ingress controller (e.g. ingress-nginx); not in Docker Desktop

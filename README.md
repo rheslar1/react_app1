@@ -1,72 +1,176 @@
-# React + Vite
+# Relay/Ops deployment dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Relay/Ops is a React/Vite operations console backed by a Go API and MySQL. It
+provides self-service accounts, revocable server-side sessions, and truthful
+API/database/deployment status. The dashboard does not invent charts, traffic,
+or capacity figures.
 
-Currently, two official plugins are available:
+## Run locally with Docker Compose
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Copy `.env.example` to `.env` and change both local database passwords.
+2. Start the stack from the repository root:
 
-## React Compiler
+   ```sh
+   docker compose up --build -d
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. Open <http://localhost:8080>, choose **Create account**, and register the
+   first operator. There is no seeded account or default production password.
+4. Stop the stack with `docker compose down`. MySQL data persists in the
+   `mysql-data` volume; remove it only when intentionally resetting local data:
 
-## Expanding the ESLint configuration
+   ```sh
+   docker compose down -v
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Compose starts Nginx/React, the Go API, and MySQL. The browser talks only to
+same-origin `/api` paths; Nginx proxies those requests to the private API
+container. MySQL and the API have no published host ports.
 
-## Run locally with Docker Desktop
+## API and security behavior
 
-With Docker Desktop running, start the app from the repository root:
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/auth/register` | Create an account (`email`, `password`) and sign in |
+| `POST /api/auth/login` | Authenticate and issue a session |
+| `GET /api/auth/me` | Restore the current session |
+| `POST /api/auth/logout` | Revoke the session and clear its cookie |
+| `GET /api/health` | Authenticated live API/database and deployment status |
+| `GET /healthz` | Readiness probe; returns success only when MySQL responds |
+
+Passwords are bcrypt-hashed. Sessions are random opaque tokens stored as
+SHA-256 digests in MySQL; the browser cookie is `HttpOnly`, `SameSite=Lax`,
+expires after 24 hours, and is `Secure` by default (disable only with
+`COOKIE_SECURE=false` for local HTTP). The API
+validates payloads, uses parameterized queries, sends no permissive CORS
+headers, and rejects cross-origin auth POSTs. Configure HTTPS and set
+`COOKIE_SECURE=true` explicitly before exposing an installation publicly.
+Self-registration is open; before public production use, add an appropriate
+signup policy, abuse controls/rate limits, and email-verification/account
+recovery flows.
+
+### API environment
+
+`MYSQL_PASSWORD` is required. The API also accepts `MYSQL_USER` (default
+`relay`), `MYSQL_HOST` (default `mysql:3306`), and `MYSQL_DATABASE` (default
+`relayops`). Compose obtains these values from the ignored local `.env` file.
+The API waits for MySQL, applies idempotent table initialization, and then
+starts. Supply database credentials via your deployment secret manager outside
+local development; never put real credentials in Helm values or source.
+
+Optional deployment metadata is set on the API process:
+
+* `APP_VERSION`
+* `APP_REVISION`
+* `APP_IMAGE_DIGEST`
+* `APP_ENVIRONMENT`
+
+Unset metadata is shown as unconfigured/unknown, never synthesized.
+
+## Development checks
 
 ```sh
-docker compose up --build -d
+npm ci
+npm test
+npm run lint
+npm run build
+cd backend
+go test ./...
+go vet ./...
 ```
 
-The `react-app` Compose project and its container will appear in Docker Desktop.
-Open <http://localhost:8080> to view the app. To stop it, run:
+## Kubernetes / Argo CD deployment
 
-```sh
-docker compose down
-```
+The Helm chart deploys the frontend, Go API, and a single-replica MySQL
+StatefulSet with a persistent volume claim. API and MySQL services are internal
+ClusterIPs; the chart publishes neither service outside the namespace. Network
+policies allow frontend-to-API and API-to-MySQL traffic only, plus DNS. CI
+builds, scans, signs, and pins both application images by digest. The DB
+credentials are never stored in Helm values: create the namespace's
+`relayops-db` Secret before installing/syncing the chart, with keys
+`password` and `root-password`.
 
-## Deployment (Argo CD)
+### Local Docker Desktop Kubernetes
 
-The `Deploy` workflow builds and pushes the image to Docker Hub, then commits
-the image digest to `helm/react-app/values.yaml`. Argo CD watches that chart
-(`argocd/application.yaml`) and syncs the cluster. The cluster is never
-touched from CI.
-
-One-time cluster setup:
-
-```sh
-# 1. Register the application with Argo CD
-kubectl apply -f argocd/application.yaml
-
-# 2. Pull secret for the private Docker Hub repository
-kubectl create namespace react-app --dry-run=client -o yaml | kubectl apply -f -
-kubectl -n react-app create secret docker-registry dockerhub-pull \
-  --docker-server=https://index.docker.io/v1/ \
-  --docker-username=<dockerhub-user> \
-  --docker-password=<dockerhub-access-token>
-```
-
-Required repository secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
-
-### Image signing and verification
-
-Every image CI pushes is signed with keyless [cosign](https://docs.sigstore.dev/)
-(GitHub OIDC, no keys to manage) and checked three ways before the digest is
-committed:
-
-1. the digest the registry reports for the commit tag equals the pushed digest (SHA-256)
-2. the cosign signature verifies against this repo's `deploy.yml` identity
-3. the build output and Helm chart match `SHA256SUMS` from the build job
-
-Verify what is actually running in the cluster (needs `kubectl` and, for
-`-Cosign`, the `cosign` CLI):
+Enable Kubernetes in Docker Desktop and verify that
+`kubectl config current-context` is `docker-desktop`. Build the Compose images
+into the local Docker image store without starting Compose:
 
 ```powershell
-.\scripts\verify-deploy.ps1            # digest in Git == Deployment == running pods
-.\scripts\verify-deploy.ps1 -Cosign    # also verify the signature
+docker compose --env-file .env.example build
 ```
+
+Create the namespace and Secret using local files that are ignored by Git.
+PowerShell prompts keep the passwords out of the command text; remove the
+temporary secret files after Kubernetes has accepted them:
+
+```powershell
+kubectl create namespace react-dashboard-local --dry-run=client -o yaml | kubectl apply -f -
+$db = Read-Host "Database password" -AsSecureString
+$root = Read-Host "MySQL root password" -AsSecureString
+$dbText = [Net.NetworkCredential]::new("", $db).Password
+$rootText = [Net.NetworkCredential]::new("", $root).Password
+$utf8 = [Text.UTF8Encoding]::new($false)
+[IO.File]::WriteAllText((Join-Path (Get-Location) ".local-db-password"), $dbText, $utf8)
+[IO.File]::WriteAllText((Join-Path (Get-Location) ".local-db-root-password"), $rootText, $utf8)
+kubectl -n react-dashboard-local create secret generic relayops-db `
+  --from-file=password=.local-db-password `
+  --from-file=root-password=.local-db-root-password `
+  --dry-run=client -o yaml | kubectl apply -f -
+Remove-Item .local-db-password, .local-db-root-password
+```
+
+Install the chart using the local image tags. Docker Desktop Kubernetes can
+consume these when they are present in its image store; if pods report
+`ImagePullBackOff`, load the local images into the Kubernetes image store or
+build/push them to a registry accessible to the cluster and use those image
+references instead.
+
+```powershell
+helm upgrade --install relayops-local .\helm\react-app `
+  --namespace react-dashboard-local `
+  --create-namespace `
+  --set image.repository=react-app `
+  --set-string image.tag=local `
+  --set-string image.digest= `
+  --set api.image.repository=relay-api `
+  --set-string api.image.tag=local `
+  --set-string api.image.digest= `
+  --set service.nodePort=30080 `
+  --set image.pullPolicy=IfNotPresent `
+  --set api.image.pullPolicy=IfNotPresent `
+  --set mysql.image.pullPolicy=IfNotPresent `
+  --set api.cookieSecure=false
+kubectl -n react-dashboard-local rollout status statefulset/react-app-mysql --timeout=5m
+kubectl -n react-dashboard-local rollout status deployment/react-app-api --timeout=3m
+kubectl -n react-dashboard-local rollout status deployment/react-app --timeout=3m
+```
+
+Open <http://localhost:30080> and register the first user. Setting `service.nodePort`
+explicitly switches the frontend Service to NodePort and allows external
+frontend ingress in the opt-in local chart rendering; the default remains
+ClusterIP. The local-only `api.cookieSecure=false` override is required because
+browsers do not send Secure cookies over HTTP. Do not use that override in
+production. No cluster manifests have been applied by this implementation.
+
+### Argo CD and production requirements
+
+The existing Argo CD Application deploys this chart from Git. On the first
+sync, bootstrap the `react-app` namespace and `relayops-db` Secret using an
+approved secret manager/external-secrets process, and provide Docker Hub pull
+credentials if either image repository is private. Keep the Secret outside
+Git/Helm values. Configure TLS and leave `api.cookieSecure=true` for HTTPS.
+CI publishes API images to
+`docker.io/<DOCKERHUB_USERNAME>/relay-api` and frontend images to
+`docker.io/<DOCKERHUB_USERNAME>/react-app`; configure the corresponding
+repository access/secrets before running a deploy workflow.
+
+The bundled MySQL StatefulSet is a single-node convenience for local
+development and small non-critical installations, not a managed database:
+production requires supported persistent storage, tested backups/restores,
+monitoring, upgrades, and secret rotation. Use a managed MySQL service for
+production where feasible, and review NetworkPolicy support in the selected
+CNI. Its PVC is intentionally retained when Helm uninstalls the release; remove
+it only after confirming backups and that data deletion is intended. Public
+self-registration additionally needs abuse controls and account recovery/email
+verification before exposure.

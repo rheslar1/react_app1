@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "react-app.name" . }}-policy
+  name: {{ include "react-app.name" . }}-frontend
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "react-app.labels" . | nindent 4 }}
@@ -12,10 +12,108 @@ spec:
       app: {{ include "react-app.name" . }}
   policyTypes:
     - Ingress
+    - Egress
   ingress:
     - from:
         - namespaceSelector: {}
       ports:
         - protocol: TCP
           port: {{ .Values.service.targetPort }}
+    {{- if .Values.service.nodePort }}
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+    {{- end }}
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: relay-api
+      ports:
+        - protocol: TCP
+          port: {{ .Values.api.service.port }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "react-app.name" . }}-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "react-app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: relay-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: {{ include "react-app.name" . }}
+      ports:
+        - protocol: TCP
+          port: 8081
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: relay-mysql
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mysql.service.port }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+{{- if .Values.mysql.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "react-app.name" . }}-mysql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "react-app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: relay-mysql
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: relay-api
+      ports:
+        - protocol: TCP
+          port: {{ .Values.mysql.service.port }}
+  egress: []
+{{- end }}
 {{- end }}

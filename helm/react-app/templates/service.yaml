@@ -6,10 +6,13 @@ metadata:
   labels:
     {{- include "react-app.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ if .Values.service.nodePort }}NodePort{{ else }}{{ .Values.service.type }}{{ end }}
   selector:
     app: {{ include "react-app.name" . }}
   ports:
     - name: http
       port: {{ .Values.service.port }}
       targetPort: http
+      {{- if .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}

@@ -1,10 +1,72 @@
 name: react-app
 
 services:
-  app:
+  frontend:
     image: react-app:local
     build:
       context: .
+      dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     restart: unless-stopped
+    depends_on:
+      relay-api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+
+  relay-api:
+    image: relay-api:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      MYSQL_HOST: mysql:3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-relayops}
+      MYSQL_USER: ${MYSQL_USER:-relay}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      APP_VERSION: ${APP_VERSION:-}
+      APP_REVISION: ${APP_REVISION:-}
+      APP_IMAGE_DIGEST: ${APP_IMAGE_DIGEST:-}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-local}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "8081"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-relayops}
+      MYSQL_USER: ${MYSQL_USER:-relay}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    expose:
+      - "3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u\"$${MYSQL_USER}\" -p\"$${MYSQL_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  mysql-data:
