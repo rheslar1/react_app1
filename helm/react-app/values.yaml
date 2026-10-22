@@ -19,7 +19,8 @@ service:
   targetPort: 8080
 
 ingress:
-  enabled: true
+  # Needs an ingress controller (e.g. ingress-nginx); not in Docker Desktop
+  enabled: false
   className: nginx
   host: react.local
 
