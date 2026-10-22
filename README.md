@@ -37,3 +37,21 @@ kubectl -n react-app create secret docker-registry dockerhub-pull \
 ```
 
 Required repository secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`.
+
+### Image signing and verification
+
+Every image CI pushes is signed with keyless [cosign](https://docs.sigstore.dev/)
+(GitHub OIDC, no keys to manage) and checked three ways before the digest is
+committed:
+
+1. the digest the registry reports for the commit tag equals the pushed digest (SHA-256)
+2. the cosign signature verifies against this repo's `deploy.yml` identity
+3. the build output and Helm chart match `SHA256SUMS` from the build job
+
+Verify what is actually running in the cluster (needs `kubectl` and, for
+`-Cosign`, the `cosign` CLI):
+
+```powershell
+.\scripts\verify-deploy.ps1            # digest in Git == Deployment == running pods
+.\scripts\verify-deploy.ps1 -Cosign    # also verify the signature
+```
