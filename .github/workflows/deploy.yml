@@ -10,10 +10,16 @@ name: Deploy
       - 'argocd/**'
       - '**.md'
   workflow_dispatch:
+  # Run scan/build/test on pull requests (Dependabot included); never deploy
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
 
 concurrency:
-  group: deploy
-  cancel-in-progress: false
+  group: deploy-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: docker.io
@@ -72,6 +78,9 @@ jobs:
 
     - name: Analyze
       uses: github/codeql-action/analyze@v4
+      with:
+        # Dependabot PRs get a read-only token and cannot upload results
+        upload: ${{ github.actor == 'dependabot[bot]' && 'never' || 'always' }}
 
   # 1c. Security scan: vulnerabilities, committed secrets and misconfigurations
   security-scan:
@@ -191,6 +200,7 @@ jobs:
   verify-secrets:
     name: Verify secrets
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     steps:
     - name: Check required secrets
@@ -212,6 +222,7 @@ jobs:
   deploy:
     name: Deploy
     needs: verify-secrets
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     permissions:
       contents: write
