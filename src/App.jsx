@@ -362,7 +362,7 @@ function Dashboard({ user, onLogout, onSessionExpired }) {
       </header>
       <main className="ops-main" id="console">
         <div className="console-intro">
-          <div><p className="console-overline">RELAY/OPS · ENGINEERING TEST SYSTEM</p><h1>Station consoles</h1><p>Sample operator and supervisor consoles based on an automated test floor.</p></div>
+          <div><p className="console-overline">RELAY/OPS · ENGINEERING TEST SYSTEM</p><h1>Station Console Dashboard</h1><p>Sample operator and supervisor consoles based on an automated test floor.</p></div>
           <div className="demo-banner"><span>DEMO ENVIRONMENT</span><strong>Sample data · no equipment connection</strong></div>
         </div>
         {logoutError && <div className="ops-error" role="alert">{logoutError}<button type="button" onClick={handleLogout}>Retry sign out</button></div>}

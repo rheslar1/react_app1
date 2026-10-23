@@ -46,7 +46,7 @@ test('registration authenticates and displays the sample operator console and AP
   await user.type(screen.getByLabelText(/password/i), 'safe-password')
   await user.click(screen.getByRole('button', { name: /create account/i }))
 
-  expect(await screen.findByRole('heading', { name: /station consoles/i })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: /station console dashboard/i })).toBeTruthy()
   expect(screen.getByRole('heading', { name: /st-04 voltage & continuity/i })).toBeTruthy()
   expect(screen.getByText(/sample data · no equipment connection/i)).toBeTruthy()
   expect(screen.getByText('ops@example.com')).toBeTruthy()
@@ -89,7 +89,7 @@ test('successful login restores the operator console and reports unavailable API
   await user.type(await screen.findByLabelText(/work email/i), 'ops@example.com')
   await user.type(screen.getByLabelText(/password/i), 'correct-password')
   await user.click(screen.getByRole('button', { name: /sign in to relay/i }))
-  expect(await screen.findByRole('heading', { name: /station consoles/i })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: /station console dashboard/i })).toBeTruthy()
   expect(screen.getByText(/api health · attention needed/i)).toBeTruthy()
   await user.click(screen.getByText(/api health · attention needed/i))
   expect(screen.getByText('Unavailable')).toBeTruthy()
@@ -134,7 +134,7 @@ test('keeps the operator console visible and reports a failed logout request', a
 
   await user.click(await screen.findByRole('button', { name: /sign out/i }))
   expect((await screen.findByRole('alert')).textContent).toMatch(/could not end your session/i)
-  expect(screen.getByRole('heading', { name: /station consoles/i })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: /station console dashboard/i })).toBeTruthy()
 })
 
 test('operator preview actions change only sample run state', async () => {
