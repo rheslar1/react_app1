@@ -50,7 +50,7 @@ test('registration authenticates and displays the sample operator console and AP
   expect(screen.getByRole('heading', { name: /st-04 voltage & continuity/i })).toBeTruthy()
   expect(screen.getByText(/sample data · no equipment connection/i)).toBeTruthy()
   expect(screen.getByText('ops@example.com')).toBeTruthy()
-  expect(screen.getByText(/api health · healthy/i)).toBeTruthy()
+  expect(await screen.findByText(/api health · healthy/i)).toBeTruthy()
   expect(fetch).toHaveBeenCalledWith('/api/auth/register', expect.objectContaining({
     method: 'POST',
     credentials: 'same-origin',
