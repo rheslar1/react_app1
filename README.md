@@ -1,9 +1,11 @@
-# Relay/Ops deployment dashboard
+# Relay/Ops test-floor dashboard
 
 Relay/Ops is a React/Vite operations console backed by a Go API and MySQL. It
 provides self-service accounts, revocable server-side sessions, and truthful
-API/database/deployment status. The dashboard does not invent charts, traffic,
-or capacity figures.
+API/database/deployment status. The operator and supervisor consoles are
+frontend previews populated with clearly labeled sample station, run, alert,
+and yield data; the backend does not yet provide station APIs or user roles.
+They do not control equipment or grant operator or supervisor permissions.
 
 ## Run locally with Docker Compose
 
@@ -15,7 +17,7 @@ or capacity figures.
    ```
 
 3. Open <http://localhost:8080>, choose **Create account**, and register the
-   first operator. There is no seeded account or default production password.
+   first account. There is no seeded account or default production password.
 4. Stop the stack with `docker compose down`. MySQL data persists in the
    `mysql-data` volume; remove it only when intentionally resetting local data:
 
@@ -26,6 +28,21 @@ or capacity figures.
 Compose starts Nginx/React, the Go API, and MySQL. The browser talks only to
 same-origin `/api` paths; Nginx proxies those requests to the private API
 container. MySQL and the API have no published host ports.
+
+## Operator and supervisor previews
+
+After signing in, switch between the **Operator** station-console preview and
+the **Supervisor** line-overview preview. The sample state selector and
+supervisor alert/station actions only change local preview state in the browser;
+they do not send equipment commands or persist actions. API health remains a
+real authenticated check, separate from the sample test-floor data.
+
+The preview follows the design-plan boundary: station agents own test verdicts
+and safety interlocks. The supervisor view is read-only for station activity
+and cannot start or stop runs, change limits or procedures, release stations,
+or override a refusal. Production use requires real station/line APIs,
+server-enforced roles and authorization, audit logging, and a validated safety
+implementation.
 
 ## API and security behavior
 
