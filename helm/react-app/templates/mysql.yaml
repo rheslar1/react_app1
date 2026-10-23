@@ -74,6 +74,7 @@ spec:
                   key: {{ .Values.mysql.rootPasswordKey | quote }}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
