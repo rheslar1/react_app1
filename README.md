@@ -136,7 +136,6 @@ helm upgrade --install relayops-local .\helm\react-app `
   --set api.image.repository=relay-api `
   --set-string api.image.tag=local `
   --set-string api.image.digest= `
-  --set service.nodePort=30080 `
   --set image.pullPolicy=IfNotPresent `
   --set api.image.pullPolicy=IfNotPresent `
   --set mysql.image.pullPolicy=IfNotPresent `
@@ -146,12 +145,19 @@ kubectl -n react-dashboard-local rollout status deployment/react-app-api --timeo
 kubectl -n react-dashboard-local rollout status deployment/react-app --timeout=3m
 ```
 
-Open <http://localhost:30080> and register the first user. Setting `service.nodePort`
-explicitly switches the frontend Service to NodePort and allows external
-frontend ingress in the opt-in local chart rendering; the default remains
-ClusterIP. The local-only `api.cookieSecure=false` override is required because
-browsers do not send Secure cookies over HTTP. Do not use that override in
-production. No cluster manifests have been applied by this implementation.
+Forward the frontend Service to a local port and open <http://localhost:18080>:
+
+```powershell
+kubectl -n react-dashboard-local port-forward service/react-app 18080:80
+```
+
+Keep the port-forward command running while using the dashboard, then register
+the first user. The frontend Service remains ClusterIP by default; an optional
+NodePort is available for clusters that expose node ports to the host. The
+local-only `api.cookieSecure=false` override is required because browsers do
+not send Secure cookies over HTTP. Do not use that override in production. The
+Docker Desktop installation uses a separate namespace and does not replace the
+existing `react-app` namespace deployment.
 
 ### Argo CD and production requirements
 
