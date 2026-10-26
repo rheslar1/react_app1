@@ -32,6 +32,7 @@ jobs:
   scan:
     name: Static scan
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -77,6 +78,7 @@ jobs:
   codeql:
     name: CodeQL analysis
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
@@ -99,6 +101,7 @@ jobs:
   security-scan:
     name: Security scan
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -119,6 +122,7 @@ jobs:
     name: Build
     needs: [scan, codeql, security-scan]
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -156,6 +160,7 @@ jobs:
     name: Test
     needs: build
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -239,6 +244,7 @@ jobs:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
     - name: Check required secrets
       env:
@@ -261,6 +267,7 @@ jobs:
     needs: verify-secrets
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     permissions:
       contents: write
       id-token: write   # keyless cosign signing (GitHub OIDC)

@@ -9,10 +9,18 @@ name: React CI
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
 jobs:
   build:
 
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     steps:
 
