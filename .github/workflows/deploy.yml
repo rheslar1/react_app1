@@ -232,7 +232,7 @@ jobs:
         push: true
         sbom: true
         provenance: mode=max
-        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:candidate-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:candidate
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -246,7 +246,7 @@ jobs:
         push: true
         sbom: true
         provenance: mode=max
-        tags: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:candidate-${{ github.sha }}
+        tags: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}:candidate
         cache-from: type=gha,scope=api
         cache-to: type=gha,scope=api,mode=max
 
