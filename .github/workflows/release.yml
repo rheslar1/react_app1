@@ -8,8 +8,45 @@ name: Release
 env:
   REGISTRY: docker.io
 
+permissions:
+  contents: read
+
 jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+
+    - name: Setup Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: backend/go.mod
+        cache-dependency-path: backend/go.sum
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Unit tests
+      run: npm test
+
+    - name: Test Go API
+      working-directory: backend
+      run: go test ./... && go vet ./...
+
   release:
+    needs: verify
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
