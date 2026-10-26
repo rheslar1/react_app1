@@ -117,9 +117,12 @@ StatefulSet with a persistent volume claim. API and MySQL services are internal
 ClusterIPs; the chart publishes neither service outside the namespace. Network
 policies allow frontend-to-API and API-to-MySQL traffic only, plus DNS. CI
 builds, scans, signs, and pins both application images by digest. The DB
-credentials are never stored in Helm values: create the namespace's
-`relayops-db` Secret before installing/syncing the chart, with keys
-`password` and `root-password`.
+credentials are never stored in Helm values: the namespace's `relayops-db`
+Secret (keys `password` and `root-password`) is delivered as a Sealed Secret.
+Seal it with `scripts/seal-relayops-db.ps1` (needs `kubeseal` and the Sealed
+Secrets controller in `kube-system`), then commit the generated
+`helm/react-app/templates/relayops-db-sealedsecret.yaml`. Only the cluster can
+decrypt it. Argo CD creates the Secret from it.
 
 ### Local Docker Desktop Kubernetes
 
@@ -193,9 +196,9 @@ existing `react-app` namespace deployment.
 ### Argo CD and production requirements
 
 The existing Argo CD Application deploys this chart from Git. On the first
-sync, bootstrap the `react-app` namespace and `relayops-db` Secret using an
-approved secret manager/external-secrets process, and provide Docker Hub pull
-credentials if either image repository is private. Keep the Secret outside
+sync, bootstrap the `react-app` namespace and the Sealed Secrets controller
+(the `relayops-db` Secret comes from the committed SealedSecret), and provide Docker Hub pull
+credentials if either image repository is private. Keep plaintext secrets outside
 Git/Helm values. Configure TLS and leave `api.cookieSecure=true` for HTTPS.
 CI publishes API images to
 `docker.io/<DOCKERHUB_USERNAME>/relay-api` and frontend images to
