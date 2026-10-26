@@ -44,6 +44,20 @@ or override a refusal. Production use requires real station/line APIs,
 server-enforced roles and authorization, audit logging, and a validated safety
 implementation.
 
+## Firmware update references
+
+For future device-firmware work, see the upstream projects:
+
+* [SWUpdate](https://swupdate.org/) — a Linux update framework for deploying
+  signed software updates to embedded devices.
+* [MCUboot](https://www.mcuboot.com/) — a secure bootloader for microcontroller
+  firmware images, including image validation and firmware upgrade flows.
+
+These are references only; this web dashboard does not currently build, sign,
+or install firmware, and no SWUpdate or MCUboot integration is implemented.
+Any production update flow must define device-specific signing keys, rollback
+and recovery behavior, authorization, and audit requirements.
+
 ## API and security behavior
 
 | Endpoint | Purpose |
