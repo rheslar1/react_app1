@@ -3,7 +3,7 @@ replicaCount: 3
 image:
   repository: docker.io/rheslar15/react-app
   # CI pins the exact image by digest (sha256:...); tag is the fallback.
-  digest: "sha256:69748320189e111ce46c20e4720ed7e47b3a7f7ba893e425df3d79e144e2a2f3"
+  digest: "sha256:c3280ede45990422d43a082dbd266a6192166330ef73cbebc64ffa7dfe86b719"
   tag: f7750a5a3cb9fc7d4f81aa09cbfc2056272c43ab
   pullPolicy: IfNotPresent
 
@@ -24,7 +24,7 @@ api:
   replicaCount: 1
   image:
     repository: docker.io/rheslar15/relay-api
-    digest: "sha256:a94993a4a03e8ce1aa8253470fb6b91ae14e001426e7fcb10ef5a03bb6a3d8be"
+    digest: "sha256:5c8546a7db6588501d3983e2f0d16a8c8cbf121a05784367f6296e1050ceec7d"
     tag: f7750a5a3cb9fc7d4f81aa09cbfc2056272c43ab
     pullPolicy: IfNotPresent
   service:
@@ -34,7 +34,7 @@ api:
   environment: production
   version: ""
   revision: ""
-  imageDigest: "sha256:a94993a4a03e8ce1aa8253470fb6b91ae14e001426e7fcb10ef5a03bb6a3d8be"
+  imageDigest: "sha256:5c8546a7db6588501d3983e2f0d16a8c8cbf121a05784367f6296e1050ceec7d"
   database:
     host: mysql
     name: relayops
