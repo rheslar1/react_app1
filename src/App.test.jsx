@@ -90,7 +90,7 @@ test('successful login restores the operator console and reports unavailable API
   await user.type(screen.getByLabelText(/password/i), 'correct-password')
   await user.click(screen.getByRole('button', { name: /sign in to relay/i }))
   expect(await screen.findByRole('heading', { name: /station console dashboard/i })).toBeTruthy()
-  expect(screen.getByText(/api health · attention needed/i)).toBeTruthy()
+  expect(await screen.findByText(/api health · attention needed/i)).toBeTruthy()
   await user.click(screen.getByText(/api health · attention needed/i))
   expect(screen.getByText('Unavailable')).toBeTruthy()
   expect(fetch).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({ method: 'POST' }))
