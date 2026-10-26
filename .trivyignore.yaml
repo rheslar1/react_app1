@@ -1,0 +1,5 @@
+misconfigurations:
+  # Upstream Sealed Secrets controller: it must read and write Secrets cluster-wide to unseal them.
+  - id: KSV-0041
+    paths:
+      - "argocd/sealed-secrets/controller.yaml"
