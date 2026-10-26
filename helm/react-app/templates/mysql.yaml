@@ -119,6 +119,7 @@ spec:
       spec:
         accessModes:
           - ReadWriteOnce
+        volumeMode: Filesystem
         {{- if .Values.mysql.persistence.storageClassName }}
         storageClassName: {{ .Values.mysql.persistence.storageClassName | quote }}
         {{- end }}
