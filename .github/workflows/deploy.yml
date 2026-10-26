@@ -337,12 +337,26 @@ jobs:
     - name: Sign image (keyless, by digest)
       env:
         DIGEST: ${{ steps.push.outputs.digest }}
-      run: cosign sign --yes "${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+      run: |
+        for attempt in 1 2 3; do
+          cosign sign --yes "${REGISTRY}/${IMAGE_NAME}@${DIGEST}" && exit 0
+          echo "::warning::cosign sign attempt ${attempt} failed; retrying"
+          sleep $((attempt * 15))
+        done
+        echo "::error::cosign sign failed after 3 attempts"
+        exit 1
 
     - name: Sign API image (keyless, by digest)
       env:
         DIGEST: ${{ steps.push-api.outputs.digest }}
-      run: cosign sign --yes "${REGISTRY}/${API_IMAGE_NAME}@${DIGEST}"
+      run: |
+        for attempt in 1 2 3; do
+          cosign sign --yes "${REGISTRY}/${API_IMAGE_NAME}@${DIGEST}" && exit 0
+          echo "::warning::cosign sign attempt ${attempt} failed; retrying"
+          sleep $((attempt * 15))
+        done
+        echo "::error::cosign sign failed after 3 attempts"
+        exit 1
 
     - name: Verify registry digest (SHA-256)
       env:
