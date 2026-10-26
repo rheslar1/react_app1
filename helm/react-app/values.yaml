@@ -3,8 +3,8 @@ replicaCount: 3
 image:
   repository: docker.io/rheslar15/react-app
   # CI pins the exact image by digest (sha256:...); tag is the fallback.
-  digest: "sha256:fe57f60da3bc6da7141b0c792c0ec0c8602a460f3bbd131520a88a13a0c90804"
-  tag: c76f9a006bb6ad925f5dc47da45c106ddb4e579f
+  digest: "sha256:34e0b7a27ab0568179364af23eae07cef9c19763396d8dc8e3f6f6f6ad80e4ec"
+  tag: a624e1ae3e0b0da85f0ab992626b593352edc973
   pullPolicy: IfNotPresent
 
 # The Docker Hub repo is public, so no pull secret is needed. If you make it
@@ -24,8 +24,8 @@ api:
   replicaCount: 1
   image:
     repository: docker.io/rheslar15/relay-api
-    digest: "sha256:00478f6a41726f6ba2bd929880999d5f3454effe0a0f37dd45b87c0dbc0b0645"
-    tag: c76f9a006bb6ad925f5dc47da45c106ddb4e579f
+    digest: "sha256:f2a3c112ef9079707a69dc3270558908e07557259c64197df58e410e19d86f54"
+    tag: a624e1ae3e0b0da85f0ab992626b593352edc973
     pullPolicy: IfNotPresent
   service:
     name: relay-api
@@ -34,7 +34,7 @@ api:
   environment: production
   version: ""
   revision: ""
-  imageDigest: "sha256:00478f6a41726f6ba2bd929880999d5f3454effe0a0f37dd45b87c0dbc0b0645"
+  imageDigest: "sha256:f2a3c112ef9079707a69dc3270558908e07557259c64197df58e410e19d86f54"
   database:
     host: mysql
     name: relayops
