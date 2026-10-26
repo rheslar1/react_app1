@@ -120,6 +120,12 @@ const initialAlerts = [
   { id: 2, severity: 'warning', title: 'ST-18 · Calibration due in 3 days', time: '18 min ago', acknowledged: false },
   { id: 3, severity: 'info', title: 'ST-42 · Fixture check required', time: '41 min ago', acknowledged: true },
 ]
+const archivedItems = [
+  { id: 101, kind: 'alert', severity: 'critical', title: 'ST-03 · Insulation resistance below limit', resolved: 'Oct 25, 2026 · 16:40', resolution: 'Cable re-terminated; retest passed' },
+  { id: 102, kind: 'alert', severity: 'warning', title: 'ST-11 · Calibration due in 3 days', resolved: 'Oct 25, 2026 · 08:15', resolution: 'Calibration completed by J. Cole' },
+  { id: 103, kind: 'failure', severity: 'critical', title: 'Continuity · ST-22', resolved: 'Oct 24, 2026 · 13:05', resolution: 'Fixture contact cleaned; retest passed' },
+  { id: 104, kind: 'failure', severity: 'critical', title: 'Dielectric withstand · ST-07', resolved: 'Oct 24, 2026 · 10:20', resolution: 'Fixture re-seated; retest passed' },
+]
 
 function StateTag({ state }) {
   return <span className={`state-tag state-${state}`}>{stateLabels.get(state) || state}</span>
@@ -312,6 +318,29 @@ function SupervisorPreview() {
   )
 }
 
+function ArchivePreview() {
+  const [kindFilter, setKindFilter] = useState('all')
+  const visible = archivedItems.filter((item) => kindFilter === 'all' || item.kind === kindFilter)
+  return (
+    <section className="supervisor-console archive-console" aria-label="Archive preview">
+      <div className="line-heading">
+        <div><p className="console-kicker">ARCHIVE <span>·</span> SAMPLE DATA</p><h2>Resolved alerts and failures</h2><p>Items cleared on Line 02, kept for review.</p></div>
+      </div>
+      <section className="side-work-panel archive-panel">
+        <div className="panel-title-row"><div><p className="panel-label">RESOLVED</p><h3>Archive <span className="count-badge">{visible.length}</span></h3></div><span className="demo-chip">SAMPLE</span></div>
+        <div className="archive-filters" role="group" aria-label="Filter archived items">
+          {[['all', 'All'], ['alert', 'Alerts'], ['failure', 'Failures']].map(([value, label]) => <button key={value} type="button" aria-pressed={kindFilter === value} onClick={() => setKindFilter(value)}>{label}</button>)}
+        </div>
+        <ul className="alert-list">
+          {visible.map((item) => <li key={item.id} className={`alert-item severity-${item.severity} is-acknowledged`}><span className="alert-mark">{item.severity === 'critical' ? '!' : '△'}</span><div className="alert-body"><strong>{item.title}</strong><small>{item.kind === 'alert' ? 'Alert' : 'Failure'} · Resolved {item.resolved}</small><small>{item.resolution}</small></div></li>)}
+        </ul>
+        {visible.length === 0 && <p className="local-note">No archived items match this filter.</p>}
+        <p className="local-note">Archive entries are example values and are not loaded from the database.</p>
+      </section>
+    </section>
+  )
+}
+
 function Dashboard({ user, onLogout, onSessionExpired }) {
   const [health, setHealth] = useState(null)
   const [error, setError] = useState('')
@@ -372,9 +401,10 @@ function Dashboard({ user, onLogout, onSessionExpired }) {
           <div className="mode-buttons" role="tablist" aria-label="Operator and supervisor preview">
             <button type="button" role="tab" aria-selected={mode === 'operator'} className={mode === 'operator' ? 'active' : ''} onClick={() => setMode('operator')}>Operator <span>Station console</span></button>
             <button type="button" role="tab" aria-selected={mode === 'supervisor'} className={mode === 'supervisor' ? 'active' : ''} onClick={() => setMode('supervisor')}>Supervisor <span>Line overview</span></button>
+            <button type="button" role="tab" aria-selected={mode === 'archive'} className={mode === 'archive' ? 'active' : ''} onClick={() => setMode('archive')}>Archive <span>Resolved items</span></button>
           </div>
         </section>
-        {mode === 'operator' ? <OperatorPreview /> : <SupervisorPreview />}
+        {mode === 'operator' ? <OperatorPreview /> : mode === 'supervisor' ? <SupervisorPreview /> : <ArchivePreview />}
         <footer className="ops-footer"><span>Relay/Ops <i>·</i> Test floor preview</span><span>All station and line data shown here is illustrative, not live or authorized.</span></footer>
       </main>
     </div>

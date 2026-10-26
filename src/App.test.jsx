@@ -179,6 +179,25 @@ test('supervisor preview supports selecting a sample station and local alert ack
   expect(screen.getByText(/stay in this browser preview only/i)).toBeTruthy()
 })
 
+test('archive tab lists resolved sample items and filters by kind', async () => {
+  const user = userEvent.setup()
+  fetch.mockImplementation((url) => {
+    if (url.endsWith('/auth/me')) return Promise.resolve(jsonResponse({ user: { email: 'ops@example.com' } }))
+    if (url.endsWith('/health')) return Promise.resolve(jsonResponse({ api: 'healthy', database: 'healthy' }))
+    throw new Error(`Unexpected request: ${url}`)
+  })
+  render(<App />)
+
+  await user.click(await screen.findByRole('tab', { name: /archive resolved items/i }))
+  expect(screen.getByRole('region', { name: /archive preview/i })).toBeTruthy()
+  expect(screen.getByText(/ST-03 · Insulation resistance below limit/)).toBeTruthy()
+  expect(screen.getByText(/Continuity · ST-22/)).toBeTruthy()
+  await user.click(screen.getByRole('button', { name: 'Failures' }))
+  expect(screen.queryByText(/ST-03 · Insulation resistance below limit/)).toBeNull()
+  expect(screen.getByText(/Continuity · ST-22/)).toBeTruthy()
+  expect(screen.getByText(/not loaded from the database/i)).toBeTruthy()
+})
+
 test('supervisor station grid supports roving arrow-key navigation and wraps by row', async () => {
   const user = userEvent.setup()
   fetch.mockImplementation((url) => {
