@@ -9,6 +9,8 @@ name: React CI
     branches:
       - main
 
+  workflow_dispatch:
+
 concurrency:
   group: ci-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
