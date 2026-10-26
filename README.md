@@ -1,5 +1,7 @@
 # Relay/Ops test-floor dashboard
 
+[![Deploy](https://github.com/rheslar1/react_app1/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/rheslar1/react_app1/actions/workflows/deploy.yml)
+
 Relay/Ops is a React/Vite operations console backed by a Go API and MySQL. It
 provides self-service accounts, revocable server-side sessions, and truthful
 API/database/deployment status. The operator and supervisor consoles are

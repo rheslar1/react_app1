@@ -43,7 +43,7 @@ jobs:
 
     - name: Test Go API
       working-directory: backend
-      run: go test ./... && go vet ./...
+      run: go test -race ./... && go vet ./...
 
   release:
     needs: verify
