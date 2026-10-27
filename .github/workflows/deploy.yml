@@ -61,6 +61,12 @@ jobs:
         version: v2.15.0
         working-directory: backend
 
+    - name: Go vulnerability scan
+      working-directory: backend
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+        govulncheck ./...
+
     - name: Dependency audit
       run: npm audit --audit-level=high
 
