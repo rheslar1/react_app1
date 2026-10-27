@@ -9,7 +9,7 @@ fileExistenceTests:
     path: /usr/share/nginx/html/index.html
     shouldExist: true
 
-metadataTests:
-  - exposedPorts: ['8080']
-  - user: '101'
-  - cmd: ['nginx', '-g', 'daemon off;']
+metadataTest:
+  exposedPorts: ['8080']
+  user: '101'
+  cmd: ['nginx', '-g', 'daemon off;']
