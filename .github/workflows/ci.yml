@@ -47,6 +47,12 @@ jobs:
     - name: Run Build
       run: npm run build
 
+    - name: Lint
+      run: npm run lint
+
+    - name: Unit tests with coverage
+      run: npm run test:coverage
+
     - name: Lint Go API
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
       with:
