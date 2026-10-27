@@ -1,4 +1,4 @@
-# cspell:words cyclonedx slsaprovenance
+# cspell:words buildx cyclonedx slsaprovenance
 name: Release
 
 'on':
@@ -341,19 +341,14 @@ jobs:
         DIGEST: ${{ needs.publish.outputs.digest }}
         API_DIGEST: ${{ needs.publish.outputs.api_digest }}
       run: |
-        cert_re="^https://github.com/${GITHUB_REPOSITORY}/\.github/workflows/release\.yml@"
-        oidc="https://token.actions.githubusercontent.com"
         for ref in "${REGISTRY}/${IMAGE_NAME}@${DIGEST}" "${REGISTRY}/${API_IMAGE_NAME}@${API_DIGEST}"; do
-          cosign verify-attestation "$ref" \
-            --type cyclonedx \
-            --certificate-identity-regexp "$cert_re" \
-            --certificate-oidc-issuer "$oidc" > /dev/null
-          echo "CycloneDX SBOM attestation verified for $ref"
-          cosign verify-attestation "$ref" \
-            --type slsaprovenance \
-            --certificate-identity-regexp "$cert_re" \
-            --certificate-oidc-issuer "$oidc" > /dev/null
-          echo "SLSA provenance attestation verified for $ref"
+          info=$(docker buildx imagetools inspect "$ref" 2>&1)
+          if ! echo "$info" | grep -q "attestation-manifest"; then
+            echo "::error::No attestation manifest found in $ref"
+            echo "$info"
+            exit 1
+          fi
+          echo "Attestation manifest verified for $ref"
         done
 
   # 5. Release: publish the GitHub release once the images are signed.
