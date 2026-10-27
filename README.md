@@ -112,6 +112,21 @@ go test ./...
 go vet ./...
 ```
 
+## Releasing
+
+Tag a commit on `main` that you authored, not a `chore(deploy)` commit. Deploy
+adds `[skip ci]` commits to `main` after every image push, and GitHub suppresses
+all workflows for a tag that points at one, so the release never starts.
+
+```sh
+git tag v1.2.3 <code-commit-sha>
+git push origin v1.2.3
+```
+
+The release only proceeds if Deploy has already passed on that commit. Tag a
+commit that has reached `main` and finished its Deploy run. A docs-only commit
+skips Deploy, so tag the last code commit instead.
+
 ## Kubernetes / Argo CD deployment
 
 The Helm chart deploys the frontend, Go API, and a single-replica MySQL
