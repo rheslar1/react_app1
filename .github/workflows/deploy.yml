@@ -1,4 +1,4 @@
-# cspell:words buildx cppcheck misconfig tmpfs esac cyclonedx slsaprovenance
+# cspell:words buildx cppcheck misconfig tmpfs esac cyclonedx slsaprovenance coverpkg
 name: Deploy
 
 'on':
@@ -226,11 +226,13 @@ jobs:
     - name: Test Go API
       working-directory: backend
       run: |
-        go test -race -coverprofile=coverage.out ./...
+        # -coverpkg restricts measurement to internal packages; cmd/api/main.go
+        # has no unit tests and would otherwise drag the total below any useful gate.
+        go test -race -coverprofile=coverage.out -coverpkg=./internal/... ./...
         go vet ./...
         pct=$(go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,"",$3); print $3}')
-        echo "Go coverage: ${pct}%"
-        awk -v p="$pct" 'BEGIN { if (p+0 < 60) { print "::error::Go coverage " p "% is below 60%"; exit 1 } }'
+        echo "Go internal coverage: ${pct}%"
+        awk -v p="$pct" 'BEGIN { if (p+0 < 70) { print "::error::Go coverage " p "% is below 70%"; exit 1 } }'
 
     - name: Upload coverage report
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
