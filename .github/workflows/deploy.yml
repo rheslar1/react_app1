@@ -168,6 +168,15 @@ jobs:
     - name: Run Build
       run: npm run build
 
+    - name: Check JS bundle size
+      run: |
+        size_kb=$(find dist/assets -name '*.js' -exec du -k {} + | awk '{sum+=$1} END {print sum}')
+        echo "JS bundle total: ${size_kb}KB"
+        if [ "$size_kb" -gt 1024 ]; then
+          echo "::error::JS bundle ${size_kb}KB exceeds 1024KB limit"
+          exit 1
+        fi
+
     - name: Package build output with SHA-256 checksum
       run: |
         tar -czf dist.tar.gz dist
@@ -332,6 +341,12 @@ jobs:
         exit-code: '1'
         ignore-unfixed: true
 
+    - name: Container structure test
+      run: |
+        curl -sLo cst https://storage.googleapis.com/container-structure-test/v1.22.1/container-structure-test-linux-amd64
+        chmod +x cst
+        ./cst test --image react-app:test --config container-structure-test.yaml
+
     - name: Smoke test container
       run: |
         docker run -d --name smoke --read-only --tmpfs /tmp --add-host relay-api:127.0.0.1 -p 8080:8080 react-app:test
@@ -350,14 +365,16 @@ jobs:
         DIGEST: ${{ steps.candidate.outputs.digest }}
         API_DIGEST: ${{ steps.candidate-api.outputs.digest }}
       run: |
+        size_bytes=$(docker image inspect react-app:test --format '{{.Size}}' 2>/dev/null || echo "0")
+        size_mb=$(( ${size_bytes:-0} / 1024 / 1024 ))
         {
           echo "## Test job summary"
           echo ""
           if [ -n "${DIGEST}" ]; then
-            echo "| Image | Digest |"
-            echo "|-------|--------|"
-            echo "| react-app | \`${DIGEST}\` |"
-            echo "| relay-api | \`${API_DIGEST}\` |"
+            echo "| Image | Digest | Size |"
+            echo "|-------|--------|------|"
+            echo "| react-app | \`${DIGEST}\` | ${size_mb}MB |"
+            echo "| relay-api | \`${API_DIGEST}\` | — |"
           else
             echo "_Pull-request run — no candidate image pushed._"
           fi
