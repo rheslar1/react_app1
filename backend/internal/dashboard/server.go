@@ -127,7 +127,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func clearSessionCookie(w http.ResponseWriter, secure bool) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows COOKIE_SECURE, which defaults to true.
 		Name: sessionCookie, Value: "", Path: "/", HttpOnly: true,
 		Secure: secure, SameSite: http.SameSiteLaxMode, MaxAge: -1,
 	})
@@ -195,7 +195,7 @@ func (s *Server) establishSession(w http.ResponseWriter, requestContext context.
 	if err := s.repo.CreateSession(ctx, user.ID, tokenDigest(token), expires); err != nil {
 		return false
 	}
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure follows COOKIE_SECURE, which defaults to true.
 		Name: sessionCookie, Value: token, Path: "/", HttpOnly: true, Secure: s.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode, Expires: expires, MaxAge: int(sessionTTL.Seconds()),
 	})
