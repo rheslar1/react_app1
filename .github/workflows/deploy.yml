@@ -343,7 +343,7 @@ jobs:
 
     - name: Container structure test
       run: |
-        curl -sLo cst https://storage.googleapis.com/container-structure-test/v1.22.1/container-structure-test-linux-amd64
+        curl -sLo cst https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.1/container-structure-test-linux-amd64
         chmod +x cst
         ./cst test --image react-app:test --config container-structure-test.yaml
 
