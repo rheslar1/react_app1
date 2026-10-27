@@ -28,3 +28,32 @@ jobs:
       run: |
         go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
         govulncheck ./...
+
+  trivy-sarif:
+    name: Trivy SARIF scan (scheduled)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Trivy filesystem scan (SARIF)
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        version: v0.75.0
+        scan-type: fs
+        scanners: vuln,secret,misconfig
+        severity: CRITICAL,HIGH
+        format: sarif
+        output: trivy.sarif
+        ignore-unfixed: true
+
+    - name: Upload Trivy results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      if: always()
+      with:
+        sarif_file: trivy.sarif
+        category: trivy-weekly

@@ -28,6 +28,23 @@ permissions:
   contents: read
 
 jobs:
+  # 0. Dependency review: block PRs that introduce newly-vulnerable packages
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    - name: Dependency review
+      uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+      with:
+        fail-on-severity: high
+
   # 1. Static scan: lint (incl. security rules) + dependency audit
   scan:
     name: Static scan
@@ -208,7 +225,12 @@ jobs:
 
     - name: Test Go API
       working-directory: backend
-      run: go test -race ./... && go vet ./...
+      run: |
+        go test -race -coverprofile=coverage.out ./...
+        go vet ./...
+        pct=$(go tool cover -func=coverage.out | awk '/^total:/{gsub(/%/,"",$3); print $3}')
+        echo "Go coverage: ${pct}%"
+        awk -v p="$pct" 'BEGIN { if (p+0 < 60) { print "::error::Go coverage " p "% is below 60%"; exit 1 } }'
 
     - name: Upload coverage report
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -319,6 +341,25 @@ jobs:
         echo "::error::Container did not return HTTP 200 (last status: $code)"
         docker logs smoke
         exit 1
+
+    - name: Write step summary
+      if: always()
+      env:
+        DIGEST: ${{ steps.candidate.outputs.digest }}
+        API_DIGEST: ${{ steps.candidate-api.outputs.digest }}
+      run: |
+        {
+          echo "## Test job summary"
+          echo ""
+          if [ -n "${DIGEST}" ]; then
+            echo "| Image | Digest |"
+            echo "|-------|--------|"
+            echo "| react-app | \`${DIGEST}\` |"
+            echo "| relay-api | \`${API_DIGEST}\` |"
+          else
+            echo "_Pull-request run — no candidate image pushed._"
+          fi
+        } >> "$GITHUB_STEP_SUMMARY"
 
   # 4. Verify secrets: fail early with a clear message if any are missing
   verify-secrets:
